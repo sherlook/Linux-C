@@ -1,0 +1,15 @@
+{
+    "editor.fontSize": 22,
+    "files.associations": {
+        "stdio.h": "c",
+        "stat.h": "c",
+        "*.tcc": "c",
+        "limits": "c",
+        "numeric": "c",
+        "streambuf": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "stdlib.h": "c",
+        "random": "c"
+    }
+}
