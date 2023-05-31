@@ -1,10 +1,12 @@
 /**
- * fork()求prime
+ * fork()
+ * wait()
 */
 
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
+#include<sys/wait.h>
 
 #define LEFT  30000000
 #define RIGHT 30000200
@@ -13,7 +15,7 @@ int main()
 {
     int i,j,mark;
     pid_t pid;
-    for(i=LEFT; i<= RIGHT; i++)
+    for(i=LEFT; i<=RIGHT; i++)
     {   
         pid = fork();
         if(pid < 0)
@@ -46,6 +48,13 @@ int main()
             exit(0);
         }
     }
-    sleep(1000);
+
+    int st;
+    for(i=LEFT; i<=RIGHT; i++)
+    {
+        wait(&st);
+    }
+
+
     exit(0);
 }
