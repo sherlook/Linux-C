@@ -26,6 +26,7 @@ int main()
     if(pid == 0)
     {
         execl("/usr/bin/date", "date", "+%s", NULL);
+        // execl("/bin/sh", "sh", "-c", "date+%s", NULL);
         perror("exec()");
         exit(1);
     }
