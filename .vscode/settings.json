@@ -10,6 +10,8 @@
         "tuple": "c",
         "type_traits": "c",
         "stdlib.h": "c",
-        "random": "c"
+        "random": "c",
+        "string.h": "c",
+        "errno.h": "c"
     }
 }
