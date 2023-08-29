@@ -23,12 +23,12 @@
 #define BUFFSIZE CPS
 #define BURST    100           // Token上限
 
-static volatile int token = 0;
+static volatile sig_atomic_t token = 0;
 
 static void alrm_handler(int s)
 {   
     alarm(1);
-    token ++;
+    token ++;       // 攒一个token
     if(token > BURST)
         token = BURST;
 }
@@ -67,12 +67,13 @@ int main(int argc , char ** argv)
     signal(SIGALRM, alrm_handler);
     alarm(1);
 
-
     while(1)
     {
+        // 没有token的时候等着
         while(token <= 0)
             pause();
-
+        
+        // 消耗掉一个token
         token--;
 
         while((len = read(sfd, buf, BUFFSIZE)) < 0)
@@ -89,6 +90,7 @@ int main(int argc , char ** argv)
             // zero indicates end of file
             break;
         }
+
         pos = 0;
         while(len > 0)
         {

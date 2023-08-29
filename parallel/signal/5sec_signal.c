@@ -21,11 +21,11 @@ int main()
     signal(SIGALRM,handler);
     alarm(5);
 
-    while(loop){
-        count++;
-    }
+    // while(loop){
+    //     count++;
+    // }
 
-    printf("count %ld\n",count);
+    // printf("count %ld\n",count);
 
     exit(0);
 }

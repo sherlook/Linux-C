@@ -18,35 +18,45 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
+#include  "mytbf.h"
 
 #define CPS      10            //每秒钟传输速率 character per second
-#define BUFFSIZE CPS
+#define BUFFSIZE 1024
+#define BURST    100           // Token上限
 
-static volatile int loop = 1;
-
-static void alrm_handler(int s)
-{   
-    alarm(1);
-    loop = 0;
-}
-
+static volatile int token = 0;
 
 int main(int argc , char ** argv)
 {   
     int sfd, dfd;
     dfd = 1;
-    char buf[BUFFSIZE]; 
+    char buf[BUFFSIZE];  
     int len,ret,pos;
+    mytbf_t * mytbf_p;
+    int size = 0;
+
+    // 判断输入命令是否合法
     if(argc < 2)
     {
         fprintf(stderr, "Usage: %s <s_file> <d_file>\n", argv[0]);
         exit(1);
     }
 
+    // 初始化令牌桶
+    mytbf_p = mytbf_init(CPS, BURST);
+    if(mytbf_p == NULL)
+    {
+        fprintf(stderr, "mytbf_init() fail!\n");
+        exit(1);
+    }
+
+    // 打开需要读取的文件，不被信号打断
     // do中需要先执行一次
     do
     {
         sfd = open(argv[1], O_RDONLY);
+        printf("sfd:%d\n", sfd);
         if(sfd < 0)
         {   
             // 信号会打断阻塞的系统调用（open）
@@ -61,22 +71,17 @@ int main(int argc , char ** argv)
     }
     while(sfd < 0);
 
-    // 注册SIGALRM信号的处理函数
-    signal(SIGALRM, alrm_handler);
-    alarm(1);
-
     while(1)
-    {
-        // wait for signal if() or while()?
-        // 实现一个阻塞，到了一秒钟的时候，程序才向下走
-        while(loop)
+    {   
+        //从令牌桶中取出BUFFSIZE个token,获得size个token
+        size = mytbf_fetchtoken(mytbf_p, BUFFSIZE);
+        if(size < 0)
         {
-            pause();
+            fprintf(stderr, "mytbf_fetchtoken():%s\n", strerror(-size));
+            exit(1);
         }
-        loop = 1;
 
-        // 循环从sfd读取
-        while((len = read(sfd, buf, BUFFSIZE)) < 0)
+        while((len = read(sfd, buf, size)) < 0)
         {
             // 报错，查看出错原因是不是信号产生的，       
             if(errno == EINTR)
@@ -84,14 +89,17 @@ int main(int argc , char ** argv)
             perror("read() fail\n");
             break;
         }
-
+        
         if(len == 0)
         {
             // zero indicates end of file
             break;
         }
-        
-        // 循环写入到dfd中
+
+        // 防止有token没用完，需要还回去
+        if(size - len > 0)
+            mytbf_returntoken(mytbf_p, size-len);
+
         pos = 0;
         while(len > 0)
         {
@@ -107,10 +115,10 @@ int main(int argc , char ** argv)
             pos += ret;
             len -= ret;
         }
-        
     }
 
     close(sfd);
+    mytbf_destory(mytbf_p);
 
     exit(0);
 }

@@ -1,7 +1,6 @@
 /**
  * 系统调用实现slow_cat,进行流量控制(每隔一段时间输出一定的字符)，音频视频中使用，网络 
- *  siganl设置alarm()的信号处理程序，程序中使用loop控制进行字符的读写    
-    alarm()计时1s  单次alarm(1)只能计时一次，需要循环产生信号
+ *  siganl设置setitimer()的信号处理程序
  *  漏桶算法与令牌桶算法：
         漏桶：
             流入速率：以任意速率流入
@@ -9,7 +8,6 @@
         令牌桶（Token）:
             流入速率：固定速率往桶中存入token
             流出速率：流出时先从桶中取出token
-
 */
 
 #include <stdio.h>
@@ -18,6 +16,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/time.h>
 
 #define CPS      10            //每秒钟传输速率 character per second
 #define BUFFSIZE CPS
@@ -26,7 +25,6 @@ static volatile int loop = 1;
 
 static void alrm_handler(int s)
 {   
-    alarm(1);
     loop = 0;
 }
 
@@ -37,6 +35,8 @@ int main(int argc , char ** argv)
     dfd = 1;
     char buf[BUFFSIZE]; 
     int len,ret,pos;
+    struct itimerval itv;
+
     if(argc < 2)
     {
         fprintf(stderr, "Usage: %s <s_file> <d_file>\n", argv[0]);
@@ -63,7 +63,17 @@ int main(int argc , char ** argv)
 
     // 注册SIGALRM信号的处理函数
     signal(SIGALRM, alrm_handler);
-    alarm(1);
+
+    itv.it_interval.tv_sec = 1;
+    itv.it_interval.tv_usec = 0;
+    itv.it_value.tv_sec = 1;
+    itv.it_value.tv_usec = 0;
+
+    if(setitimer(ITIMER_REAL, &itv, NULL) < 0)
+    {
+        perror("setitimer()");
+        exit(1);
+    }
 
     while(1)
     {
