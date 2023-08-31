@@ -1,5 +1,5 @@
 /**
- * 守护进程
+ * 守护进程，使用sigaction()解决守护进程被异常杀死之后，资源没有释放的问题
 */
 #include<stdio.h>
 #include<stdlib.h>
@@ -8,8 +8,11 @@
 #include<syslog.h>
 #include<string.h>
 #include<errno.h>
+#include<signal.h>
 
 #define FNAME "/tmp/out"
+
+static FILE * fp;
 
 static int daemonize(void)
 {
@@ -45,11 +48,32 @@ static int daemonize(void)
     return 0;
 }
 
+static void daemon_exit(int s)
+{
+    fclose(fp);
+    closelog();
+    exit(0);
+}
+
 int main()
 {   
-    FILE * fp;
     int i;
+    struct sigaction sa;
 
+    sa.sa_handler = daemon_exit;
+
+    // 响应SIGINT的时候 需要block SIGQUIT与SIGTERM，将这俩加入到set中
+    sigemptyset(&sa.sa_mask);
+    sigaddset(&sa.sa_mask, SIGQUIT);
+    sigaddset(&sa.sa_mask, SIGTERM);
+    sigaddset(&sa.sa_mask, SIGINT); //BLOCK自己，因为在执行信号处理函数的时候会将当前信号的mask置位0
+    
+    sa.sa_flags = 0;
+    
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGQUIT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+    
     //syslog
     openlog("My_daemon", LOG_PID, LOG_DAEMON);
 
@@ -84,7 +108,5 @@ int main()
         sleep(1);
     }
 
-    fclose(fp);
-    closelog();
-    exit(0);
+
 }
